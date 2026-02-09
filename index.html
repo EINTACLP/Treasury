@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Derrick's Live Portfolio Tracker</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      margin: 0;
+      padding: 20px;
+      line-height: 1.5;
+    }
+    h1 { text-align: center; color: #58a6ff; margin-bottom: 30px; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .coin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 20px;
+      transition: transform 0.2s;
+    }
+    .card:hover { transform: translateY(-4px); }
+    .ticker { font-size: 1.4em; font-weight: bold; margin: 0 0 8px; }
+    .price { font-size: 1.8em; margin: 0 0 4px; }
+    .change { font-size: 1.1em; }
+    .positive { color: #56d364; }
+    .negative { color: #f85149; }
+    .loading { text-align: center; color: #8b949e; }
+    .footer { text-align: center; margin-top: 40px; color: #8b949e; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Derrick's Live Portfolio Tracker</h1>
+    <div id="portfolio" class="coin-grid">
+      <div class="loading">Loading prices... (refresh in a moment if empty)</div>
+    </div>
+    <div class="footer">Updates every 5 minutes • Built for Pump.fun & stocks • Not financial advice</div>
+  </div>
+
+  <script>
+    const coins = [
+      { name: "PaloAltoAI", symbol: "PALOAI", type: "crypto" },
+      { name: "VeriProof", symbol: "VPF", type: "crypto" },
+      { name: "SaylorBTC", symbol: "SBTC", type: "crypto" },
+      { name: "Mark Zuckerberg Coin", symbol: "ZUCK", type: "crypto" },
+      { name: "Solana", symbol: "SOL", type: "crypto" },
+      { name: "Apple Inc.", symbol: "AAPL", type: "stock" },
+      // Add more of your coins here (just copy-paste lines)
+      // { name: "Your Next Coin", symbol: "TICKER", type: "crypto" },
+    ];
+
+    async function fetchPrice(symbol, type) {
+      try {
+        if (type === "crypto") {
+          const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${symbol.toLowerCase()}&vs_currencies=usd&include_24hr_change=true`);
+          const data = await res.json();
+          const info = data[symbol.toLowerCase()];
+          if (info) {
+            return {
+              price: info.usd.toFixed(6),
+              change: info.usd_24h_change?.toFixed(2) || "N/A",
+              class: info.usd_24h_change > 0 ? "positive" : "negative"
+            };
+          }
+        } else if (type === "stock") {
+          const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d`);
+          const data = await res.json();
+          const quote = data.chart.result[0].meta;
+          if (quote) {
+            const change = ((quote.regularMarketPrice - quote.previousClose) / quote.previousClose * 100).toFixed(2);
+            return {
+              price: quote.regularMarketPrice.toFixed(2),
+              change,
+              class: change > 0 ? "positive" : "negative"
+            };
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      return { price: "N/A", change: "N/A", class: "" };
+    }
+
+    async function updatePortfolio() {
+      const container = document.getElementById("portfolio");
+      container.innerHTML = "";
+
+      for (const coin of coins) {
+        const data = await fetchPrice(coin.symbol, coin.type);
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <div class="ticker">\( {coin.name} ( \){coin.symbol})</div>
+          <div class="price">$${data.price}</div>
+          <div class="change \( {data.class}"> \){data.change}% (24h)</div>
+        `;
+        container.appendChild(card);
+      }
+    }
+
+    updatePortfolio();
+    setInterval(updatePortfolio, 300000); // Refresh every 5 minutes
+  </script>
+</body>
+</html>
